@@ -112,11 +112,35 @@ tab_ekle, tab_liste = st.tabs(["📸 Ürün Ekle", "📋 SKT Listesi"])
 with tab_ekle:
     st.subheader("Yeni Ürün Ekle")
 
-    with st.form("urun_ekle_form", clear_on_submit=True):
-        cekilen_foto = st.camera_input("Ürün Fotoğrafı Çek")
-        urun_adi = st.text_input("Ürün Adı", placeholder="Örn: Kaşarlı Sandviç / Süt 1L")
-        skt_tarih = st.date_input("Son Kullanma Tarihi (SKT)", value=date.today())
-        kalan_adet = st.number_input("Kalan Adet", min_value=1, max_value=1000, value=1, step=1)
+    # Mobil tarayıcılarda kamera ve inputların %100 sıfırlanması için dinamik key sayacı
+    if "form_sayaci" not in st.session_state:
+        st.session_state.form_sayaci = 0
+
+    if "basari_mesaji" in st.session_state:
+        st.success(st.session_state.pop("basari_mesaji"))
+
+    fk = st.session_state.form_sayaci
+
+    with st.form(f"urun_ekle_form_{fk}", clear_on_submit=True):
+        cekilen_foto = st.camera_input("Ürün Fotoğrafı Çek", key=f"foto_{fk}")
+        urun_adi = st.text_input(
+            "Ürün Adı",
+            placeholder="Örn: Kaşarlı Sandviç / Süt 1L",
+            key=f"urun_adi_{fk}"
+        )
+        skt_tarih = st.date_input(
+            "Son Kullanma Tarihi (SKT)",
+            value=date.today(),
+            key=f"skt_{fk}"
+        )
+        kalan_adet = st.number_input(
+            "Kalan Adet",
+            min_value=1,
+            max_value=1000,
+            value=1,
+            step=1,
+            key=f"adet_{fk}"
+        )
 
         submitted = st.form_submit_button("💾 Kaydet", type="primary")
 
@@ -150,7 +174,10 @@ with tab_ekle:
                     }
                     supabase.table(TABLE_NAME).insert(yeni_urun).execute()
 
-                    st.success(f"✅ '{urun_adi}' başarıyla kaydedildi!")
+                    # Sayacı artırıp sayfayı yenileyerek mobilde kamera dahil tüm alanları sıfırla
+                    st.session_state.form_sayaci += 1
+                    st.session_state.basari_mesaji = f"✅ '{urun_adi}' başarıyla kaydedildi! Yeni ürün ekleyebilirsiniz."
+                    st.rerun()
                 except Exception as e:
                     st.error(f"❌ Kayıt sırasında bir hata oluştu: {e}")
 
