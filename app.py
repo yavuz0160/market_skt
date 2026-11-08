@@ -23,7 +23,7 @@ st.markdown(
             padding-bottom: 2rem;
             max-width: 520px;
         }
-        div.stButton > button {
+        div.stButton > button, div.stFormSubmitButton > button {
             width: 100%;
             min-height: 3rem;
             font-weight: 600;
@@ -112,12 +112,15 @@ tab_ekle, tab_liste = st.tabs(["📸 Ürün Ekle", "📋 SKT Listesi"])
 with tab_ekle:
     st.subheader("Yeni Ürün Ekle")
 
-    cekilen_foto = st.camera_input("Ürün Fotoğrafı Çek")
-    urun_adi = st.text_input("Ürün Adı", placeholder="Örn: Kaşarlı Sandviç / Süt 1L")
-    skt_tarih = st.date_input("Son Kullanma Tarihi (SKT)", value=date.today())
-    kalan_adet = st.number_input("Kalan Adet", min_value=1, max_value=1000, value=1, step=1)
+    with st.form("urun_ekle_form", clear_on_submit=True):
+        cekilen_foto = st.camera_input("Ürün Fotoğrafı Çek")
+        urun_adi = st.text_input("Ürün Adı", placeholder="Örn: Kaşarlı Sandviç / Süt 1L")
+        skt_tarih = st.date_input("Son Kullanma Tarihi (SKT)", value=date.today())
+        kalan_adet = st.number_input("Kalan Adet", min_value=1, max_value=1000, value=1, step=1)
 
-    if st.button("💾 Kaydet", type="primary"):
+        submitted = st.form_submit_button("💾 Kaydet", type="primary")
+
+    if submitted:
         if cekilen_foto is None:
             st.warning("⚠️ Lütfen önce kamerayla ürünün fotoğrafını çekin.")
         elif not urun_adi.strip():
