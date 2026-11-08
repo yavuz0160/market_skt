@@ -2,6 +2,7 @@ import uuid
 from datetime import date, datetime
 from urllib.parse import urlparse
 import streamlit as st
+import streamlit.components.v1 as components
 from supabase import create_client, Client
 
 # -----------------------------------------------------------------------------
@@ -112,17 +113,64 @@ tab_ekle, tab_liste = st.tabs(["📸 Ürün Ekle", "📋 SKT Listesi"])
 with tab_ekle:
     st.subheader("Yeni Ürün Ekle")
 
+    # Mobil tarayıcılarda varsayılan olarak ARKA KAMERAYI (environment) önceliklendir
+    components.html(
+        """
+        <script>
+        (function() {
+            try {
+                const nav = window.parent.navigator;
+                if (nav && nav.mediaDevices && nav.mediaDevices.getUserMedia && !nav.mediaDevices._rearPatched) {
+                    const origGetUserMedia = nav.mediaDevices.getUserMedia.bind(nav.mediaDevices);
+                    nav.mediaDevices.getUserMedia = function(constraints) {
+                        if (constraints && constraints.video) {
+                            if (constraints.video === true) {
+                                constraints.video = { facingMode: { ideal: "environment" } };
+                            } else if (typeof constraints.video === "object" && !constraints.video.facingMode && !constraints.video.deviceId) {
+                                constraints.video.facingMode = { ideal: "environment" };
+                            }
+                        }
+                        return origGetUserMedia(constraints);
+                    };
+                    nav.mediaDevices._rearPatched = true;
+                }
+            } catch (e) {}
+        })();
+        </script>
+        """,
+        height=0,
+    )
+
     # Mobil tarayıcılarda kamera ve inputların %100 sıfırlanması için dinamik key sayacı
     if "form_sayaci" not in st.session_state:
         st.session_state.form_sayaci = 0
+
+    # Uygulamaya girer girmez kameranın otomatik açılmasını engellemek için durum kontrolü
+    if "kamera_acik" not in st.session_state:
+        st.session_state.kamera_acik = False
 
     if "basari_mesaji" in st.session_state:
         st.success(st.session_state.pop("basari_mesaji"))
 
     fk = st.session_state.form_sayaci
 
+    # Kamera yalnızca kullanıcı butona tıkladığında açılsın
+    if not st.session_state.kamera_acik:
+        if st.button("📷 Fotoğraf Çekmek İçin Kamerayı Aç"):
+            st.session_state.kamera_acik = True
+            st.rerun()
+    else:
+        if st.button("❌ Kamerayı Kapat"):
+            st.session_state.kamera_acik = False
+            st.rerun()
+
     with st.form(f"urun_ekle_form_{fk}", clear_on_submit=True):
-        cekilen_foto = st.camera_input("Ürün Fotoğrafı Çek", key=f"foto_{fk}")
+        if st.session_state.kamera_acik:
+            cekilen_foto = st.camera_input("Ürün Fotoğrafı Çek (Arka Kamera)", key=f"foto_{fk}")
+        else:
+            cekilen_foto = None
+            st.info("📌 Ürün fotoğrafı çekmek için yukarıdaki **'📷 Fotoğraf Çekmek İçin Kamerayı Aç'** butonuna dokunun.")
+
         urun_adi = st.text_input(
             "Ürün Adı",
             placeholder="Örn: Kaşarlı Sandviç / Süt 1L",
@@ -146,7 +194,7 @@ with tab_ekle:
 
     if submitted:
         if cekilen_foto is None:
-            st.warning("⚠️ Lütfen önce kamerayla ürünün fotoğrafını çekin.")
+            st.warning("⚠️ Lütfen önce kamerayı açıp ürünün fotoğrafını çekin.")
         elif not urun_adi.strip():
             st.warning("⚠️ Lütfen ürün adını girin.")
         else:
@@ -174,8 +222,9 @@ with tab_ekle:
                     }
                     supabase.table(TABLE_NAME).insert(yeni_urun).execute()
 
-                    # Sayacı artırıp sayfayı yenileyerek mobilde kamera dahil tüm alanları sıfırla
+                    # Sayacı artır, kamerayı kapat ve sayfayı yenileyerek tüm alanları sıfırla
                     st.session_state.form_sayaci += 1
+                    st.session_state.kamera_acik = False
                     st.session_state.basari_mesaji = f"✅ '{urun_adi}' başarıyla kaydedildi! Yeni ürün ekleyebilirsiniz."
                     st.rerun()
                 except Exception as e:
