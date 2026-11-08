@@ -223,7 +223,7 @@ with tab_liste:
 
                 # Ürün Resmi
                 if resim_url:
-                    st.image(resim_url, use_container_width=True)
+                    st.image(resim_url, width="stretch")
 
                 # Ürün Bilgileri
                 st.markdown(f"### {ad}")
